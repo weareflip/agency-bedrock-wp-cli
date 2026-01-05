@@ -9,6 +9,14 @@ const PLUGIN_REPO = "git@github.com:weareflip/boilerplate-gutenberg-plugin.git";
 const THEME_NAME = "flip";
 const PLUGIN_NAME = "flip-gutenberg-blocks";
 
+const WPACKAGIST_PLUGINS = {
+	"wpackagist-plugin/duplicate-post": "*",
+	"wpackagist-plugin/svg-support": "*",
+	"wpackagist-plugin/wordpress-seo": "*",
+	"wpackagist-plugin/alttext-ai": "*",
+	"wpackagist-plugin/mailgun": "*",
+};
+
 export default async function install(projectName) {
 	if (!projectName) {
 		console.log("❌ Project name is required.");
@@ -24,6 +32,20 @@ export default async function install(projectName) {
 	await execa("composer", ["create-project", "roots/bedrock", projectName], {
 		stdio: "inherit",
 	});
+
+	console.log("📦 Adding WPackagist plugins...");
+	const composerJsonPath = path.join(projectName, "composer.json");
+	const composerJson = JSON.parse(fs.readFileSync(composerJsonPath, "utf8"));
+
+	composerJson.require = {
+		...composerJson.require,
+		...WPACKAGIST_PLUGINS,
+	};
+
+	fs.writeFileSync(composerJsonPath, JSON.stringify(composerJson, null, 2));
+
+	console.log("📥 Running composer install...");
+	await execa("composer", ["install"], { cwd: projectName, stdio: "inherit" });
 
 	const git = simpleGit();
 
