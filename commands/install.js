@@ -2,6 +2,7 @@ import { execa } from "execa";
 import simpleGit from "simple-git";
 import fs from "fs";
 import path from "path";
+import chalk from "chalk";
 
 const THEME_REPO = "git@github.com:weareflip/boilerplate-theme-flip.git";
 const PLUGIN_REPO = "git@github.com:weareflip/boilerplate-gutenberg-plugin.git";
@@ -19,56 +20,107 @@ const WPACKAGIST_PLUGINS = {
 
 export default async function install(projectName) {
 	if (!projectName) {
-		console.log("❌ Project name is required.");
+		console.log(chalk.red("❌ Project name is required."));
 		process.exit(1);
 	}
+
 	if (fs.existsSync(projectName)) {
-		console.log("❌ Folder already exists. Please choose a different name.");
+		console.log(
+			chalk.red("❌ Folder already exists. Please choose a different name.")
+		);
 		process.exit(1);
 	}
-
-	// 1. Install Bedrock
-	console.log("🚀 Installing Bedrock...");
-	await execa("composer", ["create-project", "roots/bedrock", projectName], {
-		stdio: "inherit",
-	});
-
-	console.log("📦 Adding WPackagist plugins...");
-	const composerJsonPath = path.join(projectName, "composer.json");
-	const composerJson = JSON.parse(fs.readFileSync(composerJsonPath, "utf8"));
-
-	composerJson.require = {
-		...composerJson.require,
-		...WPACKAGIST_PLUGINS,
-	};
-
-	fs.writeFileSync(composerJsonPath, JSON.stringify(composerJson, null, 2));
-
-	console.log("📥 Running composer install...");
-	await execa("composer", ["install"], { cwd: projectName, stdio: "inherit" });
 
 	const git = simpleGit();
 
-	// 2. Install theme
-	const themePath = path.join(projectName, "web/app/themes", THEME_NAME);
-	console.log("🎨 Installing theme...");
-	await git.clone(THEME_REPO, themePath);
+	try {
+		// 1️⃣ Install Bedrock
+		console.log(chalk.blue("🚀 Installing Bedrock..."));
+		await execa(
+			"composer",
+			["create-project", "roots/bedrock", projectName],
+			{
+				stdio: "inherit",
+			}
+		);
 
-	if (fs.existsSync(path.join(themePath, "package.json"))) {
-		console.log("📦 Running npm install for theme...");
-		await execa("npm", ["install"], { cwd: themePath, stdio: "inherit" });
+		// 2️⃣ Validate composer.json
+		console.log(chalk.blue("🔍 Validating composer.json..."));
+		await execa("composer", ["validate"], {
+			cwd: projectName,
+			stdio: "inherit",
+		});
+
+		// 3️⃣ Remove composer.lock if exists
+		const composerLockPath = path.join(projectName, "composer.lock");
+		console.log(chalk.blue("Checking composer.lock at:"), composerLockPath);
+
+		if (fs.existsSync(composerLockPath)) {
+			console.log(
+				chalk.yellow(
+					"🗑 Removing existing composer.lock to avoid conflicts..."
+				)
+			);
+			fs.unlinkSync(composerLockPath);
+		} else {
+			console.log(
+				chalk.green("✅ No composer.lock found, safe to proceed.")
+			);
+		}
+
+		// 4️⃣ Install WPackagist plugins safely
+		console.log(chalk.blue("📦 Installing WPackagist plugins..."));
+		for (const [pkg, version] of Object.entries(WPACKAGIST_PLUGINS)) {
+			console.log(chalk.blue(`➡ Installing ${pkg}`));
+			await execa("composer", ["require", `${pkg}:${version}`], {
+				cwd: projectName,
+				stdio: "inherit",
+			});
+		}
+
+		// 5️⃣ Install theme
+		const themePath = path.join(projectName, "web/app/themes", THEME_NAME);
+		console.log(chalk.blue("🎨 Installing theme..."));
+		await git.clone(THEME_REPO, themePath);
+
+		const themePackageJson = path.join(themePath, "package.json");
+		if (fs.existsSync(themePackageJson)) {
+			console.log(chalk.blue("📦 Running npm install for theme..."));
+			await execa("npm", ["install"], { cwd: themePath, stdio: "inherit" });
+		}
+
+		// 6️⃣ Install plugin
+		const pluginPath = path.join(projectName, "web/app/plugins", PLUGIN_NAME);
+		console.log(chalk.blue("🔌 Installing plugin..."));
+		await git.clone(PLUGIN_REPO, pluginPath);
+
+		const pluginPackageJson = path.join(pluginPath, "package.json");
+		if (fs.existsSync(pluginPackageJson)) {
+			console.log(chalk.blue("📦 Running npm install for plugin..."));
+			await execa("npm", ["install"], { cwd: pluginPath, stdio: "inherit" });
+		}
+
+		console.log(chalk.green("✅ Installation completed successfully!"));
+		console.log(chalk.green(`➡ cd ${projectName}`));
+	} catch (err) {
+		console.error(chalk.red("❌ Installation failed:"));
+
+		// Check if it's a composer merge conflict error
+		if (
+			err.stderr &&
+			err.stderr.includes("Please resolve the merge conflict")
+		) {
+			console.error(
+				chalk.yellow("⚠ Composer merge conflict detected. Try running:")
+			);
+			console.error(chalk.yellow(`  cd ${projectName} && composer install`));
+			console.error(
+				chalk.yellow("Then resolve conflicts manually in composer.json.")
+			);
+		} else {
+			console.error(err.message);
+		}
+
+		process.exit(1);
 	}
-
-	// 3. Install plugin
-	const pluginPath = path.join(projectName, "web/app/plugins", PLUGIN_NAME);
-	console.log("🔌 Installing plugin...");
-	await git.clone(PLUGIN_REPO, pluginPath);
-
-	if (fs.existsSync(path.join(pluginPath, "package.json"))) {
-		console.log("📦 Running npm install for plugin...");
-		await execa("npm", ["install"], { cwd: pluginPath, stdio: "inherit" });
-	}
-
-	console.log("✅ Installation completed!");
-	console.log(`➡ cd ${projectName}`);
 }
