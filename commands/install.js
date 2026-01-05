@@ -3,14 +3,13 @@ import simpleGit from "simple-git";
 import fs from "fs";
 import path from "path";
 
-const THEME_REPO = "https://github.com/your-org/your-theme.git";
-const PLUGIN_REPO = "https://github.com/your-org/your-plugin.git";
+const THEME_REPO = "git@github.com:weareflip/boilerplate-theme-flip.git";
+const PLUGIN_REPO = "git@github.com:weareflip/boilerplate-gutenberg-plugin.git";
 
-const THEME_NAME = "your-theme";
-const PLUGIN_NAME = "your-plugin";
+const THEME_NAME = "flip";
+const PLUGIN_NAME = "flip-gutenberg-blocks";
 
 export default async function install(projectName) {
-	// Kiểm tra folder đã tồn tại
 	if (!projectName) {
 		console.log("❌ Project name is required.");
 		process.exit(1);
