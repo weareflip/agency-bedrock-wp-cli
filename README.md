@@ -32,7 +32,7 @@ You can run the installer directly with `npx` without manually cloning the repo:
 
 ```bash
 # Run installer with npx
-npx github:weareflip/agency-bedrock-wp-cli my-project
+npx github:weareflip/agency-bedrock-wp-cli install my-project
 ```
 
 Replace my-project with your desired project folder name.
