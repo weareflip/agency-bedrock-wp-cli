@@ -83,22 +83,10 @@ export default async function install(projectName) {
 		console.log(chalk.blue("🎨 Installing theme..."));
 		await git.clone(THEME_REPO, themePath);
 
-		const themePackageJson = path.join(themePath, "package.json");
-		if (fs.existsSync(themePackageJson)) {
-			console.log(chalk.blue("📦 Running npm install for theme..."));
-			await execa("npm", ["install"], { cwd: themePath, stdio: "inherit" });
-		}
-
 		// 6️⃣ Install plugin
 		const pluginPath = path.join(projectName, "web/app/plugins", PLUGIN_NAME);
 		console.log(chalk.blue("🔌 Installing plugin..."));
 		await git.clone(PLUGIN_REPO, pluginPath);
-
-		const pluginPackageJson = path.join(pluginPath, "package.json");
-		if (fs.existsSync(pluginPackageJson)) {
-			console.log(chalk.blue("📦 Running npm install for plugin..."));
-			await execa("npm", ["install"], { cwd: pluginPath, stdio: "inherit" });
-		}
 
 		console.log(chalk.green("✅ Installation completed successfully!"));
 		console.log(chalk.green(`➡ cd ${projectName}`));
